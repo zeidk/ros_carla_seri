@@ -8,7 +8,10 @@ import numpy as np
 import math
 
 
-class Controller2D(object):
+class Controller2D():
+    '''
+    Class for longitudinal and lateral control of the vehicle.
+    '''    
     def __init__(self, waypoints, control_method):
         self.vars = cutils.CUtils()
         self._current_x = 0
@@ -16,7 +19,7 @@ class Controller2D(object):
         self._current_yaw = 0
         self._current_speed = 0
         self._desired_speed = 0
-        self._current_frame = 0
+        # self._current_frame = 0
         self._current_timestamp = 0
         self._start_control_loop = False
         self._set_throttle = 0
@@ -39,9 +42,20 @@ class Controller2D(object):
         self._control_method = control_method
         self._steering_diff = np.linspace(-10, 10, 21, endpoint=True)
 
-    def update_values(self, x, y, yaw, speed, closest_distance):
-        self._current_x = x
-        self._current_y = y
+    def update_values(self, current_x, current_y, yaw, speed, closest_distance):
+        '''
+        Update the current state of the vehicle
+
+        Args:
+            current_x (float): Current x coordinate of the vehicle
+            current_y (float): Current y coordinate of the vehicle
+            yaw (float): Current yaw of the vehicle (radian)
+            speed (float): Current speed of the vehicle
+            closest_distance (float): Closest distance of a waypoint to the vehicle
+        '''        
+        
+        self._current_x = current_x
+        self._current_y = current_y
         self._current_yaw = yaw
         self._current_speed = speed
         # self._current_timestamp = timestamp
@@ -100,13 +114,13 @@ class Controller2D(object):
         self.vars.i_term_previous = i_term
         return k_term + i_term
 
-    def get_shifted_coordinate(self, x, y, yaw, length):
+    def get_shifted_coordinate(self, x_pos, y_pos, yaw, length):
         '''
         Shift the origin of the vehicle based on the control type
 
         Args:
-            x (float): Current x coordinate of the vehicle
-            y (float): Current y coordinate of the vehicle
+            x_pos (float): Current x coordinate of the vehicle
+            y_pos (float): Current y coordinate of the vehicle
             yaw (float): Current yaw of the vehicle (radian)
             length (float): Offset to apply to the current position of the vehicle
 
@@ -114,8 +128,8 @@ class Controller2D(object):
             tuple: Shifted x and y coordinates
         '''
         
-        x_shifted = x + length*np.cos(yaw)
-        y_shifted = y + length*np.sin(yaw)
+        x_shifted = x_pos + length*np.cos(yaw)
+        y_shifted = y_pos + length*np.sin(yaw)
         return x_shifted, y_shifted
 
     def get_lookahead_dis(self, v):
@@ -187,22 +201,6 @@ class Controller2D(object):
             cte_error = self.get_steering_direction(v1, v2)*self.get_cte_heading_error(v)
             steering = heading_error + cte_error
             return steering
-        elif self._control_method == 'MPC':
-            steering_list = self.vars.steering_previous + self._steering_diff * self._pi/180
-            last_waypoint = [waypoints[int(self._Kmpc*len(waypoints))][0], waypoints[int(self._Kmpc*len(waypoints))][1]]
-            min_dis = float("inf")
-            steering = self.vars.steering_previous
-            for i in range(len(steering_list)):
-                predicted_wheel_location = self.get_predicted_wheel_location(x, y, steering_list[i], yaw, v)
-                dis_to_last_waypoint = self.get_distance(
-                    predicted_wheel_location[0],
-                    predicted_wheel_location[1],
-                    last_waypoint[0],
-                    last_waypoint[1])
-                if dis_to_last_waypoint < min_dis:
-                    min_dis = dis_to_last_waypoint
-                    steering = steering_list[i]
-            return steering
         else:
             return 0
 
@@ -225,24 +223,24 @@ class Controller2D(object):
 
         ######################################################
         ######################################################
-        # MODULE 7: DECLARE USAGE VARIABLES HERE
+        # MODULE 7: DECLARE USAGE VARIABLES
         ######################################################
         ######################################################
-        """
-        Use 'self.vars.create_var(<variable name>, <default value>)'
-        to create a persistent variable (not destroyed at each iteration).
-        This means that the value can be stored for use in the next
-        iteration of the control loop.
+        
+        # Use 'self.vars.create_var(<variable name>, <default value>)'
+        # to create a persistent variable (not destroyed at each iteration).
+        # This means that the value can be stored for use in the next
+        # iteration of the control loop.
 
-        Example: Creation of 'v_previous', default value to be 0
-        self.vars.create_var('v_previous', 0.0)
+        # Example: Creation of 'v_previous', default value to be 0
+        # self.vars.create_var('v_previous', 0.0)
 
-        Example: Setting 'v_previous' to be 1.0
-        self.vars.v_previous = 1.0
+        # Example: Setting 'v_previous' to be 1.0
+        # self.vars.v_previous = 1.0
 
-        Example: Accessing the value from 'v_previous' to be used
-        throttle_output = 0.5 * self.vars.v_previous
-        """
+        # Example: Accessing the value from 'v_previous' to be used
+        # throttle_output = 0.5 * self.vars.v_previous
+        
         self.vars.create_var('v_previous', 0.0)
         self.vars.create_var('t_previous', 0.0)
         self.vars.create_var('i_term_previous', 0.0)
@@ -251,66 +249,57 @@ class Controller2D(object):
 
         # Skip the first frame to store previous values properly
         if self._start_control_loop:
-            """
-            Controller iteration code block.
+            
+            # Controller iteration code block.
 
-            Controller Feedback Variables:
-                x               : Current X position (meters)
-                y               : Current Y position (meters)
-                yaw             : Current yaw pose (radians)
-                v               : Current forward speed (meters per second)
-                t               : Current time (seconds)
-                v_desired       : Current desired speed (meters per second)
-                                    (Computed as the speed to track at the
-                                    closest waypoint to the vehicle.)
-                waypoints       : Current waypoints to track
-                                    (Includes speed to track at each x,y
-                                    location.)
-                                    Format: [[x0, y0, v0],
-                                            [x1, y1, v1],
-                                            ...
-                                            [xn, yn, vn]]
-                                    Example:
-                                        waypoints[2][1]:
-                                        Returns the 3rd waypoint's y position
+            # Controller Feedback Variables:
+            #     x               : Current X position (meters)
+            #     y               : Current Y position (meters)
+            #     yaw             : Current yaw pose (radians)
+            #     v               : Current forward speed (meters per second)
+            #     t               : Current time (seconds)
+            #     v_desired       : Current desired speed (meters per second)
+            #                         (Computed as the speed to track at the
+            #                         closest waypoint to the vehicle.)
+            #     waypoints       : Current waypoints to track
+            #                         (Includes speed to track at each x,y
+            #                         location.)
+            #                         Format: [[x0, y0, v0],
+            #                                 [x1, y1, v1],
+            #                                 ...
+            #                                 [xn, yn, vn]]
+            #                         Example:
+            #                             waypoints[2][1]:
+            #                             Returns the 3rd waypoint's y position
 
-                                        waypoints[5]:
-                                        Returns [x5, y5, v5] (6th waypoint)
+            #                             waypoints[5]:
+            #                             Returns [x5, y5, v5] (6th waypoint)
 
-            Controller Output Variables:
-                throttle_output : Throttle output (0 to 1)
-                steer_output    : Steer output (-1.22 rad to 1.22 rad)
-                brake_output    : Brake output (0 to 1)
-            """
+            # Controller Output Variables:
+            #     throttle_output : Throttle output (0 to 1)
+            #     steer_output    : Steer output (-1.22 rad to 1.22 rad)
+            #     brake_output    : Brake output (0 to 1)
+            
 
             ######################################################
             ######################################################
-            # MODULE 7: IMPLEMENTATION OF LONGITUDINAL CONTROLLER HERE
+            # IMPLEMENTATION OF LONGITUDINAL CONTROLLER
             ######################################################
             ######################################################
-            """
-            Implement a longitudinal controller here. Remember that you can
-            access the persistent variables declared above here. For
-            example, can treat self.vars.v_previous like a "global variable".
-            """
 
             # Change these outputs with the longitudinal controller. Note that
-            # brake_output is optional and is not required to pass the
-            # assignment, as the car will naturally slow down over time.
+            # brake_output is optional and is not required as the car will 
+            # naturally slow down over time.
 
             throttle_output = self.calculate_throttle(t, v, v_desired)
             brake_output = 0
 
             ######################################################
             ######################################################
-            # MODULE 7: IMPLEMENTATION OF LATERAL CONTROLLER HERE
+            # IMPLEMENTATION OF LATERAL CONTROLLER
             ######################################################
             ######################################################
-            """
-                Implement a lateral controller here. Remember that you can
-                access the persistent variables declared above here. For
-                example, can treat self.vars.v_previous like a "global variable".
-            """
+
             # print("Goal point idx =",idx)
             # Change the steer output with the lateral controller.
             steer_output = self.calculate_steering(x, y, yaw, waypoints, v)

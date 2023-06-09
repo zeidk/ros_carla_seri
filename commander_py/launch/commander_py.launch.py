@@ -123,8 +123,8 @@ def generate_launch_description():
                     }]),
             
             launch.actions.DeclareLaunchArgument(
-                name='control_method', default_value='MPC',
-                description='Control method: MPC, Stanley, PurePursuit'),
+                name='control_method', default_value='PurePursuit',
+                description='Control method: Stanley, PurePursuit'),
             
             launch.actions.DeclareLaunchArgument(
                 name='is_ground_truth', default_value='False',
